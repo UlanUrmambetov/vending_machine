@@ -3,15 +3,18 @@ import model.*;
 import util.UniversalArray;
 import util.UniversalArrayImpl;
 
+import java.util.OptionalInt;
 import java.util.Scanner;
 
 public class AppRunner {
 
     private final UniversalArray<Product> products = new UniversalArrayImpl<>();
 
+    private static boolean isExit = false;
+
     private final CoinAcceptor coinAcceptor;
 
-    private static boolean isExit = false;
+    private final Scanner sc = new Scanner(System.in);
 
     private AppRunner() {
         products.addAll(new Product[]{
@@ -25,14 +28,15 @@ public class AppRunner {
         coinAcceptor = new CoinAcceptor(100);
     }
 
-    public static void run() {
+    public static void run() throws IllegalAccessException {
         AppRunner app = new AppRunner();
         while (!isExit) {
             app.startSimulation();
         }
+
     }
 
-    private void startSimulation() {
+    private void startSimulation() throws IllegalAccessException {
         print("В автомате доступны:");
         showProducts(products);
 
@@ -54,34 +58,76 @@ public class AppRunner {
         return allowProducts;
     }
 
-    private void chooseAction(UniversalArray<Product> products) {
-        print(" a - Пополнить баланс");
-        showActions(products);
-        print(" h - Выйти");
-        String action = fromConsole().substring(0, 1);
-        if ("a".equalsIgnoreCase(action)) {
-            coinAcceptor.setAmount(coinAcceptor.getAmount() + 10);
-            print("Вы пополнили баланс на 10");
-            return;
-        }
+    private static OptionalInt tryParse(String text){
         try {
-            for (int i = 0; i < products.size(); i++) {
-                if (products.get(i).getActionLetter().equals(ActionLetter.valueOf(action.toUpperCase()))) {
-                    coinAcceptor.setAmount(coinAcceptor.getAmount() - products.get(i).getPrice());
-                    print("Вы купили " + products.get(i).getName());
-                    break;
+            int value = Integer.parseInt(text);
+            return OptionalInt.of(value);
+        } catch (NumberFormatException e) {
+            System.out.println("Введено не число");
+            return OptionalInt.empty();
+        }
+    }
+
+    private void moneyBox() throws IllegalAccessException{
+        try {
+            print("Машина может принять до 5 тысяч");
+            System.out.print("Введите сумму пополнения: ");
+            String input = sc.nextLine();
+            OptionalInt result = tryParse(input);
+            if (result.isEmpty()){
+                throw new IllegalAccessException("Введите число");
+            }
+            int amount = result.getAsInt();
+            coinAcceptor.setAmount(coinAcceptor.getAmount() + amount);
+            print("Вы пополнили баланс на " + amount);
+        }catch (Exception e){
+            System.out.println("Введите сумму");
+        }
+    }
+
+    private void chooseAction(UniversalArray<Product> products) throws IllegalAccessException {
+        while (true) {
+            print(" a - Пополнить баланс");
+            showActions(products);
+            print(" h - Выйти");
+
+            String input = fromConsole().trim();
+            if (input.isEmpty()) {
+                print("Вы ввели пустую строку");
+                chooseAction(products);
+                continue;
+            }
+
+            String action;
+            try {
+                action = input.substring(0, 1).toLowerCase();
+            } catch (IndexOutOfBoundsException e) {
+                print("Ошибка ввода. Попробуйте еще раз.");
+                continue;
+            }
+
+            if ("a".equalsIgnoreCase(action)) {
+                moneyBox();
+                return;
+            }
+
+            try {
+                for (int i = 0; i < products.size(); i++) {
+                    if (products.get(i).getActionLetter().equals(ActionLetter.valueOf(action.toUpperCase()))) {
+                        coinAcceptor.setAmount(coinAcceptor.getAmount() - products.get(i).getPrice());
+                        print("Вы купили " + products.get(i).getName());
+                        break;
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                if ("h".equalsIgnoreCase(action)) {
+                    isExit = true;
+                } else {
+                    print("Недопустимая буква. Попрбуйте еще раз.");
+                    chooseAction(products);
                 }
             }
-        } catch (IllegalArgumentException e) {
-            if ("h".equalsIgnoreCase(action)) {
-                isExit = true;
-            } else {
-                print("Недопустимая буква. Попрбуйте еще раз.");
-                chooseAction(products);
-            }
         }
-
-
     }
 
     private void showActions(UniversalArray<Product> products) {

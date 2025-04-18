@@ -43,7 +43,6 @@ public class UniversalArrayImpl<T> implements UniversalArray<T> {
         }
         array = Arrays.copyOfRange(array, 0, array.length - 1);
     }
-
     @Override
     public int size() {
         return array.length;
